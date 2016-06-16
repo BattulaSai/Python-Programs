@@ -1,0 +1,298 @@
+XML TO CSV PARSING :
+-------------------
+
+
+----> GIVEN A XML FILE WHICH CONSISTS OF ROOT TAG AND CHILD TAGS...
+
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE results SYSTEM "http://app.quotemedia.com/data/dtds/history.dtd">
+<results>
+   <copyright>Copyright (c) 2016 QuoteMedia, Inc.</copyright>
+   <symbolcount>1</symbolcount>
+   <history symbolstring="FREEF" start="2016-05-08" end="2016-05-11" adjusted="true" unadjusted="false">
+      <key>
+         <symbol><![CDATA[FREEF]]></symbol>
+         <exchange><![CDATA[OTCQB]]></exchange>
+         <exLgName><![CDATA[OTCQB - U.S. Registered]]></exLgName>
+         <exShName><![CDATA[OTCQB]]></exShName>
+      </key>
+      <equityinfo>
+         <longname><![CDATA[FreeSeas Inc]]></longname>
+         <shortname><![CDATA[FREEF]]></shortname>
+      </equityinfo>
+      <eoddata date="2016-05-10">
+         <open>0.23</open>
+         <high>0.23</high>
+         <low>0.172</low>
+         <close>0.192</close>
+         <vwap>0.201106</vwap>
+         <change>-0.038</change>
+         <changepercent>-16.522</changepercent>
+         <sharevolume>131104</sharevolume>
+         <totalvalue>26362.93</totalvalue>
+         <totaltrades>113</totaltrades>
+      </eoddata>
+      <eoddata date="2016-05-09">
+         <open>0.355</open>
+         <high>0.39</high>
+         <low>0.19</low>
+         <close>0.23</close>
+         <vwap>0.241252</vwap>
+         <change>-0.0755</change>
+         <changepercent>-24.714</changepercent>
+         <sharevolume>170322</sharevolume>
+         <totalvalue>41103.98</totalvalue>
+         <totaltrades>117</totaltrades>
+      </eoddata>
+   </history>
+</results>
+
+sample.xml
+
+-----> HERE IN THIS XML FILE THERE IS A CHILD TAG <EODDATA> , WE SHOULD FIND THE HIGHEST LENGTH VALUE IN THE HIGH TAG INSIDE THE EODDATA TAG....
+
+-----> CODE TO FIND THE HIGHEST LENGTH VALUE IN HIGH ..
+
+
+TEST.PY :
+--------
+
+
+import xml.etree.ElementTree as ET
+
+result = []
+tree = ET.parse('sample1.xml')
+root = tree.getroot()
+history	 = root.findall("history")
+children = history[0].findall("eoddata")
+for child in children:
+	high_set = child.findall("high")
+	for high in high_set:
+		result.append(high.text)	
+p = max(result, key=len)
+#print "The longest number is " , p
+#print "The length of the number is " , len(p)
+i = 1	
+for element in result:
+    if len(result[i]) == p:
+        print result[i]
+    else:
+        i+=0           		
+
+-----> BY USING ABOVE CODE WE CAN FIND HIGHEST LENGTH VALUE IN HIGH TAG IN EODDATA TAG...
+
+
+-----> CONVERTING XML FILE TO CSV FILE , THAT IS SAMPLE.XML FILE TO SAMPLE.CSV FILE ....
+
+
+-----> CODE TO CONVERT XML TO CSV ...
+
+
+
+CSV.PY :
+------
+
+from xmlutils.xml2csv import xml2csv
+
+converter = xml2csv("sample1.xml", "sample.csv", encoding="utf-8")
+converter.convert(tag="eoddata")
+
+
+-----> UP TO HERE IT IS FINE , WE CAN CONVERT XML FILE TO CSV FILE ...
+
+-----> WE SHOULD RECIEVE DATA FROM URL WHICH IS XML DATA AND WE SHOULD CONVERT IT TO CSV , IT HAS ARGUMENTS LIKE WEBMASTERID , SYMBOL , STARTDATE , ENDDATE.....
+
+-----> THE URL SHOULD BE OF FORM....
+  
+    
+        http://app.quotemedia.com/data/getFullHistory.xml?webmasterId=101170&symbol=FREEF&start=2007-10-03&end=2007-10-04
+
+
+-----> HERE THE CLIENT ALWAYS USED TO GIVE SYMBOL , STARTDATE AND ENDDATE THEN THE DATA SHOULD KEPT IN ONE FILE AND CONVERT IT TO .CSV FILE....
+
+-----> WHICH IS THE BEHAVIOUR OF GOOD PROGRAMMER TO PASS ARGUMENTS ...
+
+-----> THEN THIS IS THE TIME TO WRITE CODE TO FORM URL , BY PASSING ARGUMENTS
+
+qm_xml_csv.py :
+-------------
+
+#! /usr/bin/python
+import argparse
+from datetime import datetime
+import re
+import sys
+import string
+
+def valid_date(a):
+    try:
+        datetime.strptime(a, "%Y-%m-%d")
+    except ValueError:
+        msg = "Not a valid date or date format: '{0}'.".format(a)
+        raise argparse.ArgumentTypeError(msg)
+    return a
+
+def checksymbol(s):
+     for c in s:
+          if not (c in string.ascii_letters or c in string.digits):
+              print "Not a valid symbol: '{0}'".format(s)
+              sys.exit(1)
+     return s
+
+parser = argparse.ArgumentParser(description='This is to enter start date and end date.')
+parser.add_argument('-s','--symbol', help='symbol name',required =True, type = checksymbol)
+parser.add_argument('-a', "--startdate", help="The Start Date - format YYYY-MM-DD ", required=True , type = valid_date)
+parser.add_argument('-e', "--enddate", help="The End Date format YYYY-MM-DD (Inclusive)", required=True , type = valid_date)
+args = parser.parse_args()
+
+date_format = "%Y-%m-%d"
+a = datetime.strptime(args.startdate, date_format)
+b = datetime.strptime(args.enddate, date_format)
+diff = b - a
+if diff.days < 0:
+   print "Startdate should be less than Enddate."
+   sys.exit(1)
+
+print "http://app.quotemedia.com/data/getFullHistory.xml?webmasterId=101170&symbol=%s&start=%s&end=%s" % (args.symbol, args.startdate, args.enddate)
+                                                                                                                                                                                              
+                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                                      
+
+-----> HERE WE FORMED URL , AND NEXT AS WE DISCUSSED ALREADY , SEND ALL THE DATA TO .XML FILE AND CONVERT IT TO .CSV FILE...
+
+
+-----> HERE FOR THE ABOVE CODE HOW SHOULD WE PASS ARGUMENTS...
+
+
+             ./qm_xml_csv.py -s FREEF1 -a 1999-02-12 -e 1999-03-12 
+
+
+------> HERE SYMBOL SHOULD BE ALPHANUMERIC BUT SHOULD NOT CONTAIN SPECIAL CHARACTERS....
+
+------> NEXT STARTDATE AND ENDDATE SHOULD BE OF VALID_FORMAT THAT IS , YYYY-MM-DD WHICH IS STANDARD FORMAT...
+
+-------> IF ANY OF THIS IF WE MISSED THEN IT SHOULS PRINT MESSAGE TO ENTER CORRECT FORMAT....
+
+-------> AND THERE IS FACILITY TO PRINT HELP MESSAGE BY TYPING --h OR --help
+
+
+[flexiadmin@cpt-vrt-071 ~]$ ./qm_xml_csv.py
+usage: qm_xml_csv.py [-h] -s SYMBOL -a STARTDATE -e ENDDATE
+qm_xml_csv.py: error: argument -s/--symbol is required
+
+
+
+[flexiadmin@cpt-vrt-071 ~]$ ./qm_xml_csv.py -h
+usage: qm_xml_csv.py [-h] -s SYMBOL -a STARTDATE -e ENDDATE
+
+This is to enter start date and end date.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -s SYMBOL, --symbol SYMBOL
+                        symbol name
+  -a STARTDATE, --startdate STARTDATE
+                        The Start Date - format YYYY-MM-DD
+  -e ENDDATE, --enddate ENDDATE
+                        The End Date format YYYY-MM-DD (Inclusive)
+
+
+
+
+-----> IN THIS WAY URL IS FORMED AND DATA IN THE URL IS SEND TO XML FILE AND THEN THE XML FILE IS CONVERTED TO .CSV FILE......
+
+
+------> THIS IS CALLED XML TO CSV PARSING.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
